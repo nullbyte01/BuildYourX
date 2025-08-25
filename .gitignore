@@ -1,0 +1,7 @@
+*.vs
+*.user
+*.suo
+
+[Oo]bj/
+[Dd]ebug/
+[Bb]in/
