@@ -36,26 +36,37 @@ namespace HttpServer.App.Http
             {
                 using (var stream = client.GetStream())
                 {
-                    byte[] buffer = new byte[4096];
-                    if (stream.DataAvailable)
+                    try
                     {
-                      _ = await stream.ReadAsync(buffer.AsMemory(0,Math.Min(buffer.Length, stream.DataAvailable ? buffer.Length:0)),ct);
+                        var headerBytes = await HttpRequestHeader.ReadHeadersAsync(stream, 8192, ct);
+                        _ = headerBytes;
+
+                        var body = "Hello";
+                        var headers = "HTTP/1.1 200 OK\r\n" +
+                            $"Content-Length: {Encoding.UTF8.GetByteCount(body)}\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Connection: close\r\n" +
+                            "\r\n";
+
+                        var resp = Encoding.ASCII.GetBytes(headers + body);
+                        await stream.WriteAsync(resp, 0, resp.Length, ct);
+                        await stream.FlushAsync(ct);
                     }
-                    else
+                    catch (HttpRequestHeader.HeaderTooLargeException)
                     {
-                        await Task.Delay(10, ct);
+                        var msg = "headers too large";
+                        var resp = "HTTP/1.1 431 Request Header Fields Too Large\r\n" +
+                           $"Content-Length: {msg.Length}\r\n" +
+                           "Content-Type: text/plain\r\n" +
+                           "Connection: close\r\n" +
+                           msg;
+                        var b = Encoding.ASCII.GetBytes(resp);
+                        await stream.WriteAsync(b, 0, b.Length, ct);
                     }
+                    catch (IOException)
+                    {
 
-                    var body = "Hello";
-                    var headers="HTTP/1.1 200 OK\r\n"+
-                        $"Content-Length: {Encoding.UTF8.GetByteCount(body)}\r\n"+
-                        "Content-Type: text/plain\r\n"+
-                        "Connection: close\r\n"+
-                        "\r\n";
-
-                    var resp=Encoding.ASCII.GetBytes(headers+body);
-                    await stream.WriteAsync(resp,0,resp.Length, ct);
-                    await stream.FlushAsync(ct);
+                    }
                 }
             }
         }
